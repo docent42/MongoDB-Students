@@ -1,22 +1,14 @@
 import com.mongodb.Block;
-import com.mongodb.client.MongoClient;
-import com.mongodb.client.MongoClients;
-import com.mongodb.client.MongoCollection;
-import com.mongodb.client.MongoDatabase;
-import org.bson.BSON;
+import com.mongodb.client.*;
 import org.bson.Document;
-import org.bson.conversions.Bson;
 
 import java.io.BufferedReader;
-import java.io.File;
 import java.io.FileReader;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Scanner;
 
-import static com.mongodb.client.model.Aggregates.limit;
-import static com.mongodb.client.model.Filters.*;
+import static com.mongodb.client.model.Filters.gt;
 
 
 public class Main
@@ -27,19 +19,53 @@ public class Main
 
         try (MongoClient mongoClient = MongoClients.create())
         {
+            // -------------------- Connection to base --------------------------------------
 
             MongoDatabase mongoDB = mongoClient.getDatabase("test");
             MongoCollection<Document> collection = mongoDB.getCollection("students");
+
+            // <- расскоментить по надобности сброса ->
             //collection.drop();
+
+            //<- расскоментить по надобности залива информации ->
             //collection.insertMany(fromCsvToMongo("csv/mongo.csv"));
+
+            // ---------------------- Tasks ------------------------------------------------
             System.out.printf("%n1. Students count - %d%n%n",collection.countDocuments());
             int i=0;
+            //------------------------------------------------------------------------------
+
             for (Document temp : collection.find(gt("age",40)))
                 i++;
-            System.out.printf("%n2. Students over 40 years old - %d%n%n",i);
-            String youngestStudent = collection.find().sort(new Document("age",1)).limit(1).first().getString("name");
-            System.out.printf("%n3. Youngest student on course - %s%n",youngestStudent);
 
+            System.out.printf("%n2. Students over 40 years old - %d%n%n",i);
+            //-------------------------------------------------------------------------------
+
+            int youngestAge = (Integer) collection.find()
+                    .sort(new Document("age",1))
+                    .limit(1).first()
+                    .get("age");
+            FindIterable<Document> youngestList = collection
+                                                .find(new Document().append("age",youngestAge));
+
+            System.out.println("3. Youngest student on course:\n");
+            for (Document doc : youngestList)
+                System.out.println("- " + doc.getString("name"));
+
+            //-------------------------------------------------------------------------------
+
+            int oldestAge = (Integer) collection.find()
+                    .sort(new Document("age",-1))
+                    .limit(1).first()
+                    .get("age");
+            FindIterable<Document> oldestList = collection
+                                                .find(new Document().append("age",oldestAge));
+
+            System.out.println("\n4. The courses of oldest students are :\n");
+            for (Document doc : oldestList) {
+                System.out.print("- " + doc.getString("name") + ": ");
+                doc.values().stream().skip(3).forEach(System.out::println);
+            }
         }
         catch (Exception ex)
         {
